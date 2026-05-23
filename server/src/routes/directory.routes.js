@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { callLumen } from '../lumenClient.js'
+import { callLumen, encodePath } from '../lumenClient.js'
 import { validateQuery, listQuery } from '../middleware/validateQuery.js'
 
 const r = Router()
@@ -9,7 +9,7 @@ r.get('/directoryItems', validateQuery(listQuery), async (req, res, next) => {
     const { path, ...rest } = req.query
     const { data } = await callLumen({
       method: 'GET',
-      url: `/directoryItems/${encodeURIComponent(path)}`,
+      url: `/directoryItems/${encodePath(path)}`,
       params: rest,
     })
     res.json(data)
@@ -23,7 +23,7 @@ r.get('/directoryItems/logs', validateQuery(listQuery), async (req, res, next) =
     const { path, ...rest } = req.query
     const { data } = await callLumen({
       method: 'GET',
-      url: `/directoryItems/logs/${encodeURIComponent(path)}`,
+      url: `/directoryItems/logs/${encodePath(path)}`,
       params: rest,
     })
     res.json(data)
@@ -37,7 +37,7 @@ r.get('/archivedFiles', validateQuery(listQuery), async (req, res, next) => {
     const { path, ...rest } = req.query
     const { data } = await callLumen({
       method: 'GET',
-      url: `/archivedFiles/${encodeURIComponent(path)}`,
+      url: `/archivedFiles/${encodePath(path)}`,
       params: rest,
     })
     res.json(data)

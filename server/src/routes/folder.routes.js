@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { callLumen } from '../lumenClient.js'
+import { callLumen, encodePath } from '../lumenClient.js'
 import { validateQuery, pathOnlyQuery, folderCreateBody } from '../middleware/validateQuery.js'
 
 const r = Router()
@@ -9,7 +9,7 @@ r.get('/folder', validateQuery(pathOnlyQuery), async (req, res, next) => {
     const { path } = req.query
     const { data } = await callLumen({
       method: 'GET',
-      url: `/folder/${encodeURIComponent(path)}`,
+      url: `/folder/${encodePath(path)}`,
     })
     res.json(data)
   } catch (e) {
@@ -26,8 +26,8 @@ r.post(
       const { path } = req.query
       const { data } = await callLumen({
         method: 'POST',
-        url: `/folder/create/${encodeURIComponent(path)}`,
-        data: req.body,
+        url: `/folder/create/${encodePath(path)}`,
+        data: { ...req.body, Path: path },
       })
       res.json(data)
     } catch (e) {

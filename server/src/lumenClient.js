@@ -1,5 +1,11 @@
 import axios from 'axios'
 
+export function encodePath(path) {
+  const stripped = String(path ?? '').replace(/^\/+/, '')
+  if (!stripped) return '%2F'
+  return encodeURIComponent(stripped)
+}
+
 let client = null
 
 function getClient() {

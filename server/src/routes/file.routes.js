@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { callLumen } from '../lumenClient.js'
+import { callLumen, encodePath } from '../lumenClient.js'
 import {
   validateQuery,
   pathOnlyQuery,
@@ -16,7 +16,7 @@ r.get('/file', validateQuery(pathOnlyQuery), async (req, res, next) => {
     const { path } = req.query
     const { data } = await callLumen({
       method: 'GET',
-      url: `/file/${encodeURIComponent(path)}`,
+      url: `/file/${encodePath(path)}`,
     })
     res.json(data)
   } catch (e) {
@@ -33,8 +33,8 @@ r.post(
       const { path } = req.query
       const { data } = await callLumen({
         method: 'POST',
-        url: `/file/create/${encodeURIComponent(path)}`,
-        data: req.body,
+        url: `/file/create/${encodePath(path)}`,
+        data: { ...req.body, Path: path },
       })
       res.json(data)
     } catch (e) {
@@ -50,10 +50,11 @@ r.post(
   async (req, res, next) => {
     try {
       const { path } = req.query
+      const Files = (req.body?.Files ?? []).map((f) => ({ ...f, Path: path }))
       const { data } = await callLumen({
         method: 'POST',
-        url: `/files/create/${encodeURIComponent(path)}`,
-        data: req.body,
+        url: `/files/create/${encodePath(path)}`,
+        data: { ...req.body, Files, Path: path },
       })
       res.json(data)
     } catch (e) {
@@ -71,7 +72,7 @@ r.patch(
       const { path } = req.query
       const { data } = await callLumen({
         method: 'PATCH',
-        url: `/file/metadata/${encodeURIComponent(path)}`,
+        url: `/file/metadata/${encodePath(path)}`,
         data: req.body,
       })
       res.json(data)
@@ -86,7 +87,7 @@ r.delete('/file/archive', validateQuery(pathOnlyQuery), async (req, res, next) =
     const { path } = req.query
     const { data } = await callLumen({
       method: 'DELETE',
-      url: `/file/archive/${encodeURIComponent(path)}`,
+      url: `/file/archive/${encodePath(path)}`,
     })
     res.json(data)
   } catch (e) {
@@ -103,7 +104,7 @@ r.patch(
       const { path } = req.query
       const { data } = await callLumen({
         method: 'PATCH',
-        url: `/file/restore/${encodeURIComponent(path)}`,
+        url: `/file/restore/${encodePath(path)}`,
         data: req.body,
       })
       res.json(data)
@@ -118,7 +119,7 @@ r.delete('/file/delete', validateQuery(pathOnlyQuery), async (req, res, next) =>
     const { path } = req.query
     const { data } = await callLumen({
       method: 'DELETE',
-      url: `/file/delete/${encodeURIComponent(path)}`,
+      url: `/file/delete/${encodePath(path)}`,
     })
     res.json(data)
   } catch (e) {
