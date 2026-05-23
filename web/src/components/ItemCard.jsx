@@ -15,15 +15,31 @@ function FileIcon() {
   )
 }
 
-export default function ItemCard({ item, onOpen }) {
+function InfoIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8h.01M11 12h1v5h1" />
+    </svg>
+  )
+}
+
+export default function ItemCard({ item, onOpen, onShowDetails }) {
   const isFolder = item.Type === 'folder' || item.FolderType !== undefined
   const ext = item.FileExtension ? '.' + String(item.FileExtension).toUpperCase() : ''
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onOpen(item)}
-      className="text-left border border-lumen-border hover:border-lumen-fg p-4 flex items-start gap-3 bg-white hover:bg-lumen-row-hover transition-colors"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen(item)
+        }
+      }}
+      className="text-left border border-lumen-border hover:border-lumen-fg p-4 flex items-start gap-3 bg-white hover:bg-lumen-row-hover transition-colors cursor-pointer"
     >
       <div className="text-lumen-fg shrink-0">{isFolder ? <FolderIcon /> : <FileIcon />}</div>
       <div className="min-w-0 flex-1">
@@ -32,6 +48,20 @@ export default function ItemCard({ item, onOpen }) {
           {isFolder ? (item.FolderType ?? 'folder') : 'file' + ext}
         </div>
       </div>
-    </button>
+      {isFolder && onShowDetails && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onShowDetails(item)
+          }}
+          aria-label="View folder details"
+          title="View folder details"
+          className="shrink-0 text-lumen-muted hover:text-lumen-fg w-7 h-7 flex items-center justify-center border border-transparent hover:border-lumen-border"
+        >
+          <InfoIcon />
+        </button>
+      )}
+    </div>
   )
 }

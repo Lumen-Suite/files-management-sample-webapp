@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, extractError } from '../api/client.js'
-import { ROOT, normalize } from '../lib/path.js'
+import { ROOT, normalize, joinPath } from '../lib/path.js'
 import Spinner from '../components/Spinner.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
 import EmptyState from '../components/EmptyState.jsx'
@@ -62,16 +62,19 @@ export default function ArchivedFiles() {
   }
 
   const restore = async (entry) => {
-    const archivedPath = entry.Path ?? path
+    const parentPath = entry.Path ?? path
+    const segment = entry.Name ?? entry.id ?? entry.Id
     const directoryItemId = entry.DirectoryItemID ?? entry.id ?? entry.Id
     const archivedId = entry.ArchivedID ?? entry.id
-    if (!directoryItemId || !archivedId) {
+    if (!segment || !directoryItemId || !archivedId) {
       setError('Cannot restore — missing ID on the archived record.')
       return
     }
+    const prefixed = segment.startsWith('file-') ? segment : `file-${segment}`
+    const fullPath = joinPath(parentPath, prefixed)
     setRestoring(archivedId)
     try {
-      await api.patch(`/file/restore?path=${encodeURIComponent(archivedPath)}`, {
+      await api.patch(`/file/restore?path=${encodeURIComponent(fullPath)}`, {
         DirectoryItemID: String(directoryItemId),
         ArchivedID: String(archivedId),
       })

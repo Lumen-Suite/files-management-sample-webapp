@@ -36,7 +36,9 @@ export default function EditMetadataModal({ open, item, currentPath, onClose, on
     setBusy(true)
     setError(null)
     try {
-      const itemPath = joinPath(currentPath, item.Name)
+      const segment = item.Name ?? item.id ?? ''
+      const prefixed = segment.startsWith('file-') ? segment : `file-${segment}`
+      const itemPath = joinPath(currentPath, prefixed)
       await api.patch(`/file/metadata?path=${encodeURIComponent(itemPath)}`, payload)
       onSaved?.()
       onClose()
