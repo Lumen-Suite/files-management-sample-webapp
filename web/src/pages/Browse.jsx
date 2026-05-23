@@ -150,7 +150,7 @@ export default function Browse() {
           }
         />
       ) : (
-        <DirectoryGrid items={items} onOpen={onOpenItem} />
+        <DirectoryGrid items={items} onOpen={onOpenItem} onShowDetails={setActiveItem} />
       )}
 
       <Pagination
