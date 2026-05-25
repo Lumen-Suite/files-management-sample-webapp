@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+﻿import { Outlet } from 'react-router-dom'
 import Header from './Header.jsx'
 
 export default function Layout() {
@@ -16,7 +16,7 @@ export default function Layout() {
             Public sample &middot; calls the Lumen Dev Files API through a local Express proxy &middot; MIT licensed
           </span>
           <a
-            href="https://github.com/Bayanichain/files-management-sample-webapp"
+            href="https://github.com/Lumen-Suite/files-management-sample-webapp"
             target="_blank"
             rel="noreferrer"
             className="text-lumen-muted hover:text-lumen-fg"
