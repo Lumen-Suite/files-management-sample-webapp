@@ -83,6 +83,8 @@ function SingleFileForm({ currentPath, onUploaded }) {
           FileExtension: extOf(file.name) || 'bin',
           Checksum,
           Description: description,
+          Size: file.size,
+          MimeType: file.type || 'application/octet-stream',
         },
       )
 
@@ -322,6 +324,8 @@ function BatchFileForm({ currentPath, onUploaded }) {
               FileExtension: extOf(r.file.name) || 'bin',
               Checksum,
               Description: r.description,
+              Size: r.file.size,
+              MimeType: r.file.type || 'application/octet-stream',
             },
           }
         }),

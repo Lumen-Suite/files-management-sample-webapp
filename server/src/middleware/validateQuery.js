@@ -41,11 +41,15 @@ export const pathOnlyQuery = z.object({ path: pathSchema }).passthrough()
 
 const md5Base64 = z.string().regex(/^[A-Za-z0-9+/]{22}==$/, 'Checksum must be base64-encoded MD5 (16 bytes)')
 
+const MAX_UPLOAD_FILE_SIZE_BYTES = 20 * 1024 * 1024 // matches BE SchemaDeveloperUploadFile
+
 export const uploadBody = z.object({
   Name: z.string().min(1).max(255),
   FileExtension: z.string().min(1).max(32),
   Checksum: md5Base64,
   Description: z.string().max(2000).optional().default(''),
+  Size: z.number().int().positive().max(MAX_UPLOAD_FILE_SIZE_BYTES),
+  MimeType: z.string().min(1).max(255),
 })
 
 export const batchUploadBody = z.object({
