@@ -220,7 +220,7 @@ Reserves a spot for a new file and gives you back a single-use upload URL. **Thi
 | `Checksum` | string | Base64-encoded MD5 of the file bytes (a 24-character string ending in `==`). |
 | `Description` | string (optional, up to 2000 chars) | Free-text description. Defaults to empty. |
 
-> **Heads up:** The `Checksum` must be base64-encoded MD5 — that's the format Azure expects. If you compute it as a 32-character hex string, convert it to base64 first. The browser-side helper `web/src/lib/md5.js` does this for you.
+> **Heads up:** The `Checksum` must be base64-encoded MD5 — that's the format Lumen compares against. If you compute it as a 32-character hex string, convert it to base64 first. The browser-side helper `web/src/lib/md5.js` does this for you.
 
 #### Example
 
@@ -230,13 +230,13 @@ curl -X POST "http://localhost:8787/api/file/create?path=/Q4%20reports" \
   -d '{"Name":"summary","FileExtension":"pdf","Checksum":"MTIzNDU2Nzg5MGFiY2RlZg==","Description":"Quarterly summary"}'
 ```
 
-> **What you should see:** A JSON response containing a `SASURL` (the single-use upload address), a `WorkflowID` (the ID of the background mint workflow Lumen starts), and a `File` object with the new file's metadata.
+> **What you should see:** A JSON response containing a `SASURL` (the single-use upload address — an Amazon S3 presigned URL; the field keeps its older name `SASURL`), a `WorkflowID` (the ID of the background mint workflow Lumen starts), and a `File` object with the new file's metadata.
 
 #### Response shape
 
 ```json
 {
-  "SASURL": "https://example.blob.core.windows.net/files/...?sig=...",
+  "SASURL": "https://<bucket>.s3.<region>.amazonaws.com/...?X-Amz-Algorithm=AWS4-HMAC-SHA256&...&X-Amz-Signature=...",
   "WorkflowID": "wf-12345",
   "File": {
     "id": "file-new-1",
@@ -249,15 +249,15 @@ curl -X POST "http://localhost:8787/api/file/create?path=/Q4%20reports" \
 
 #### Step 2 — PUT the file bytes
 
-After this route returns, the browser must PUT the actual file bytes to `SASURL` with these headers:
+After this route returns, the browser must PUT the actual file bytes to `SASURL` (an S3 presigned URL) in one request, with one header:
 
 ```
-x-ms-blob-type: BlockBlob
-x-ms-blob-content-md5: <the same Checksum you sent in step 1>
 Content-Type: <the file's MIME type, or application/octet-stream>
 ```
 
-If the checksum doesn't match the bytes Azure receives, the upload is rejected.
+No auth headers (the signature in the URL is the permission) and no checksum header. One PUT, not a multipart upload. The upload URL expires after 60 minutes.
+
+After the file lands, Lumen compares the `Checksum` you sent in step 1 with the stored file. If they don't match, Lumen's background workflow fails and the file never appears in your folder.
 
 #### What it wraps
 

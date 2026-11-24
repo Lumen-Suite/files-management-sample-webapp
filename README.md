@@ -8,7 +8,7 @@ This is a small, friendly example application that shows the files your organiza
 
 > **What this is for:** Two kinds of people. (1) Developers who want to see how the Lumen Dev **Files** APIs (the online services that hand out file and folder data) work. (2) Non-coders who want to manage their organization's files without writing any code themselves.
 
-**What's under the hood (don't worry if these words mean nothing):** Vite + React (the part you see in the browser), Tailwind v4 (the visual styling), Express (a tiny server that runs on your own computer at port 8787), one settings file called `.env`, and one command to start everything: `npm start`. When you upload a file, the file bytes go **directly** to Azure storage using a single-use upload address â€” the tiny server in the middle only handles the small bits of text describing the file, never the file itself.
+**What's under the hood (don't worry if these words mean nothing):** Vite + React (the part you see in the browser), Tailwind v4 (the visual styling), Express (a tiny server that runs on your own computer at port 8787), one settings file called `.env`, and one command to start everything: `npm start`. When you upload a file, the file bytes go **directly** to Lumen's file storage (Amazon S3) using a single-use upload address — the tiny server in the middle only handles the small bits of text describing the file, never the file itself.
 
 ---
 
@@ -111,19 +111,19 @@ There's also a separate **Archive** page at `/archive`. Archived files are ones 
 
 ```
 Your browser  ->  Local Express server  ->  Lumen Dev Files API
-   :5173             :8787                   (Azure cloud)
+   :5173             :8787                   (AWS cloud)
        \
-        \---- PUT file bytes directly ----> Azure Blob Storage
-                                            (single-use SAS URL)
+        \---- PUT file bytes directly ----> Amazon S3
+                                            (single-use presigned URL)
 ```
 
 The **Express server** is a tiny program running on your own computer. Its only job is to attach your API key and secret to outgoing requests before sending them to Lumen, so those secrets never end up in the browser where someone could steal them.
 
-But when you upload a file, the file bytes themselves take a **separate path**. The browser asks the Express server to ask Lumen for a **pre-signed URL** (a single-use upload address that only works for this exact file, for the next few minutes). Then the browser uploads the file directly to Azure storage using that URL. The Express server never touches the file's contents â€” only the small bits of text describing it.
+But when you upload a file, the file bytes themselves take a **separate path**. The browser asks the Express server to ask Lumen for a **pre-signed URL** (a single-use upload address that only works for this exact file, for the next few minutes). Then the browser uploads the file directly to Lumen's file storage (Amazon S3) using that URL. The Express server never touches the file's contents — only the small bits of text describing it.
 
 **Why bother with the middle server?** If we put your API secret directly in the browser code, anyone visiting the site could open the developer tools and copy it. Keeping it server-side keeps you safe â€” even if you later put this app on the public internet.
 
-**Why does the file binary skip the server?** Two reasons. First, efficiency: the file goes straight from your computer to Azure without making a detour through Node.js. That's faster and uses less of your computer's CPU. Second, scale: a real production server doesn't want to be a bottleneck for 100 MB files.
+**Why does the file binary skip the server?** Two reasons. First, efficiency: the file goes straight from your computer to Amazon S3 without making a detour through Node.js. That's faster and uses less of your computer's CPU. Second, scale: a real production server doesn't want to be a bottleneck for 100 MB files.
 
 More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -146,7 +146,7 @@ More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | `LUMEN_API_KEY missing` | You haven't filled in your secrets yet. | Re-read Step 5 above and edit `.env`. |
 | The file browser is empty | Your organization has no files or folders yet â€” not an error. | Click **New folder** or **Upload** to create the first ones. |
 | Red banner saying `401` or `403` | Your API key or secret is wrong, or the key doesn't have file permission. | Double-check `.env`, save, stop the app (Ctrl+C in the terminal), and run `npm start` again. |
-| Browser console says "CORS error" mentioning `blob.core.windows.net` during an upload | The Lumen storage account doesn't yet allow uploads from `http://localhost:5173`. This is unique to the Files sample â€” the file goes directly to Azure storage, not through the local server. | Contact the Lumen team and ask them to whitelist `http://localhost:5173` for `PUT` on the Files storage account. |
+| Browser console says "CORS error" mentioning `amazonaws.com` during an upload | Lumen's upload bucket doesn't yet allow uploads from `http://localhost:5173`. This is unique to the Files sample — the file goes directly to Amazon S3, not through the local server. | Contact the Lumen team and ask them to allow your origin (`http://localhost:5173`) for `PUT` in the upload bucket's CORS settings. |
 
 > **CORS** (Cross-Origin Resource Sharing) is a browser security rule that blocks websites on one address from talking to a server on a different address â€” unless the server explicitly allows it.
 
