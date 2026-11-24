@@ -13,7 +13,7 @@ This page explains how the sample app is put together and why each piece exists.
 ```
 +--------------------+       +----------------------+       +-----------------------+
 |  Browser (5173)    |  -->  |  Express BFF (8787)  |  -->  |  Lumen Files API      |
-|  Vite + React JSX  |       |  thin proxy          |       |  (Azure Container App)|
+|  Vite + React JSX  |       |  thin proxy          |       |  (hosted on AWS)      |
 |  Tailwind 4        |       |  + helmet + CORS     |       |                       |
 |                    |       |  + rate limit        |       |  13 endpoints         |
 |  no auth, no token |       |  + Zod query + body  |       |  (Org persona)        |
@@ -29,7 +29,7 @@ This page explains how the sample app is put together and why each piece exists.
         |  upload step 2: PUT file bytes directly with single-use URL
         v
 +-----------------------+
-|  Azure Blob Storage   |
+|  Amazon S3 bucket     |
 |  (Lumen platform)     |
 |  needs CORS for :5173 |
 +-----------------------+
@@ -39,9 +39,9 @@ There are three layers in the normal request path, left to right:
 
 1. **The browser part** (the React app at `http://localhost:5173`). This is what you see and click on.
 2. **The local Express server** at `http://localhost:8787`. A small program running on your computer that acts as a middleman.
-3. **The Lumen Files API** out on the internet (hosted in Azure). The real source of file, folder, and archive data.
+3. **The Lumen Files API** out on the internet (hosted on AWS). The real source of file, folder, and archive data.
 
-When you upload a file, a fourth box enters the picture: **Azure Blob Storage**. The browser writes the file's bytes there directly, bypassing the Express server. The "two-step upload" section below explains why.
+When you upload a file, a fourth box enters the picture: **Amazon S3** (Lumen's file storage). The browser writes the file's bytes there directly, bypassing the Express server. The "two-step upload" section below explains why.
 
 Both halves of the app read from a single `.env` settings file at the project root.
 
@@ -69,15 +69,15 @@ This is the part of the sample most worth understanding. When you drop a file on
 
 2. **The browser asks the Express server "I want to upload a file."** It sends just the small bits of text describing the file: its name, its file extension, and the fingerprint from step 1. The actual file contents are **not** sent yet.
 
-3. **The Express server forwards that question to Lumen, and Lumen replies with a pre-signed URL.** A pre-signed URL is a single-use upload address that only works for this exact file, this exact size, this exact fingerprint, for the next few minutes. Think of it like a one-time-use coat-check ticket. Lumen calls this a **SAS URL** (Shared Access Signature).
+3. **The Express server forwards that question to Lumen, and Lumen replies with a pre-signed URL.** A pre-signed URL is a single-use upload address that only works for this one file, for a limited time (60 minutes). Think of it like a one-time-use coat-check ticket. Under the hood it's an Amazon S3 **presigned URL**. In the API response it lives in a field called `SASURL` — the field keeps its older name for compatibility.
 
-4. **The browser uploads the actual file bytes directly to Azure storage** using that URL. The Express server is not involved in this step at all. The browser uses a standard `PUT` request and includes two important headers: `x-ms-blob-type: BlockBlob` (tells Azure what kind of blob to create) and `x-ms-blob-content-md5: <fingerprint>` (so Azure can verify it received exactly the right bytes).
+4. **The browser uploads the actual file bytes directly to Amazon S3** using that URL. The Express server is not involved in this step at all. The browser uses one standard `PUT` request with a single header, `Content-Type` (the file's type, such as `image/png`). There are no login headers — the signature inside the URL is the permission — and no checksum header either.
 
-5. **Azure verifies the fingerprint matches** the bytes it received. If they match, the upload is accepted. If they don't, Azure rejects it — proof that nothing got corrupted in transit. Lumen then kicks off a follow-up workflow (such as minting an NFT for the file, depending on your organization's policies), and gives back a `WorkflowID` you can use to track that work.
+5. **Lumen checks the fingerprint after the file lands.** It compares the fingerprint you sent in step 2 with the file now in storage. If they match, the file is accepted. If they don't, Lumen's follow-up workflow fails and the file never shows up in your folder — proof that nothing slipped through corrupted. Lumen also kicks off a follow-up workflow (such as minting an NFT for the file, depending on your organization's policies), and gives back a `WorkflowID` you can use to track that work.
 
 **Why this matters.** The file never goes through the Express server. That keeps the server small (its body-size limit is just 32 KB — enough for metadata, not enough for files) and means upload speed isn't limited by your local machine's CPU. A 100 MB file goes from your disk straight to the cloud, not through a Node.js process.
 
-> **Heads up:** Because the file goes browser-to-Azure directly, **Azure storage's own CORS settings** matter — separate from the Express server's CORS. The Lumen platform needs to allow `http://localhost:5173` for `PUT` on the Files storage account. If you see a CORS error in the browser console mentioning `blob.core.windows.net`, that's the cause. See [SETUP.md](SETUP.md#troubleshooting-matrix).
+> **Heads up:** Because the file goes browser-to-S3 directly, **the upload bucket's own CORS settings** matter — separate from the Express server's CORS. The Lumen team needs to allow your origin (`http://localhost:5173`) for `PUT` on the upload bucket's CORS. If you see a CORS error in the browser console mentioning `amazonaws.com`, that's the cause. See [SETUP.md](SETUP.md#troubleshooting-matrix).
 
 ---
 
@@ -141,7 +141,7 @@ Each row below is a possible attack or mistake, and what we did to block it.
 | Cross-origin attacks | CORS (Cross-Origin Resource Sharing) is a browser rule limiting which websites can call your server. We use an allowlist driven by `ALLOWED_ORIGIN`. The methods allowed on `/api` are `GET`, `POST`, `PATCH`, and `DELETE` — the four the Files API actually uses. |
 | Abuse / runaway scripts | `express-rate-limit` caps `/api/*` at **200 requests per 15 minutes** per IP address. That's higher than the wallets sample because browsing folders and uploading in bursts is normal. If something starts hammering the server, it gets a `429 Too Many Requests` response. |
 | Query and body fuzzing | Zod (a validation library) checks both query parameters AND request bodies against allowlists before forwarding to Lumen. Junk values get rejected with a `400 Bad Request` before they leave your machine. |
-| File-bytes-through-middleware risk | Express's JSON body parser is capped at **32 KB**. The BFF never receives file bytes — only metadata — so the size limit is intentionally tiny. The file goes browser-to-Azure directly. |
+| File-bytes-through-middleware risk | Express's JSON body parser is capped at **32 KB**. The BFF never receives file bytes — only metadata — so the size limit is intentionally tiny. The file goes browser-to-S3 directly. |
 | Error leakage | Errors from Lumen are normalized into a clean `{ ok, status, error }` shape. Stack traces (which can reveal internal details) never reach the browser. |
 
 > **Heads up:** These mitigations are good for a local sample and small deployments. For real production traffic, see "Deploying this" below.
@@ -181,6 +181,6 @@ The local-only flow works as-is. If you want to put this sample on the public in
 1. **Frontend** — deploy to Vercel or Netlify (both free tiers). Set the environment variable `VITE_BFF_URL` to your backend's public URL.
 2. **Backend** — deploy to Render, Railway, or Azure Container Apps. Set `LUMEN_API_KEY`, `LUMEN_API_SECRET`, and `ALLOWED_ORIGIN` (= your frontend's public URL).
 3. **CORS update on the BFF** — make sure `ALLOWED_ORIGIN` matches the deployed frontend URL exactly. Update the Helmet CSP `connect-src` allowlist if it's pointing at a new host.
-4. **CORS update on the Lumen storage account** — this one is unique to the Files sample. Because the browser uploads file bytes directly to Azure storage, the Lumen platform's storage account CORS must allow your real frontend's domain (not just `http://localhost:5173`) for the `PUT` method. Contact the Lumen team to add it.
+4. **CORS update on the Lumen upload bucket** — this one is unique to the Files sample. Because the browser uploads file bytes directly to Amazon S3, the CORS settings on Lumen's upload bucket must allow your real frontend's domain (not just `http://localhost:5173`) for the `PUT` method. Contact the Lumen team to add it.
 
 > **Tip:** For a true production deployment, you'd also want centralized logging, distributed rate limiting (backed by Redis instead of in-memory), and TLS (HTTPS) at both hops. Those upgrades are out of scope for this sample but are well-trodden paths if you want them.

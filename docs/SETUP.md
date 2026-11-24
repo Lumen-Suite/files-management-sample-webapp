@@ -123,7 +123,7 @@ Run the command for your computer:
 Open `.env` in any text editor â€” Notepad on Windows, TextEdit on macOS, or VS Code if you have it. You'll see something like:
 
 ```
-LUMEN_API_BASE_URL=https://lumen-apim-stg.azure-api.net/file
+LUMEN_API_BASE_URL=https://api.staging.nonlive.lumen.bayanichain.tech/file
 LUMEN_API_KEY=paste-your-api-key-here
 LUMEN_API_SECRET=paste-your-api-secret-here
 SERVER_PORT=8787
@@ -132,6 +132,8 @@ VITE_BFF_URL=http://localhost:8787
 ```
 
 Replace the `paste-your-...-here` text with the real values from Step 2.
+
+> **Note:** `LUMEN_API_BASE_URL` already points at Lumen's **staging** API gateway, so you can leave it as it is. The live gateway is `https://api.lumen.bayanichain.tech` (same `/file` path) — only switch to it if your API key comes from a live organization.
 
 > **Important rules:**
 >
@@ -236,11 +238,11 @@ Each problem below has three parts: **what you saw** in your terminal or browser
 |---|---|---|
 | Browser developer tools (F12) show a CORS error mentioning `localhost:8787`. | You probably changed the Vite port. The Express server has an allowlist of origins it accepts requests from, and your browser's address no longer matches. | In `.env`, set `ALLOWED_ORIGIN` to the exact URL shown in your browser's address bar (including `http://` and the port). |
 
-### Browser console shows "CORS error" against `*.blob.core.windows.net` during an upload
+### Browser console shows "CORS error" against `*.amazonaws.com` during an upload
 
 | What you saw | What it means | How to fix it |
 |---|---|---|
-| When uploading a file, a CORS error appears in the browser console. The blocked URL mentions `blob.core.windows.net`, not your local server. | This is unique to the Files sample. When you upload, the browser sends the file bytes **directly** to Azure storage using a single-use upload address. Azure's storage account has its own CORS allowlist â€” separate from the Express server's â€” and your local origin isn't on it yet. | Contact the Lumen team and ask them to whitelist `http://localhost:5173` for the `PUT` method on the Files storage account. This is a one-time configuration on the platform side. |
+| When uploading a file, a CORS error appears in the browser console. The blocked URL mentions `amazonaws.com`, not your local server. | This is unique to the Files sample. When you upload, the browser sends the file bytes **directly** to Lumen's upload bucket on Amazon S3 using a single-use upload address (an S3 presigned URL). The bucket has its own CORS allowlist — separate from the Express server's — and your local origin isn't on it yet. | Contact the Lumen team and ask them to allow your origin (`http://localhost:5173`) for the `PUT` method on the upload bucket's CORS. This is a one-time configuration on the platform side. |
 
 ### Nothing happens / blank screen
 

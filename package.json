@@ -2,7 +2,7 @@
   "name": "files-management-sample-webapp",
   "version": "1.0.0",
   "private": true,
-  "description": "Public sample demonstrating the Lumen Dev Files APIs from an organization's perspective. Vite + React + Tailwind frontend, Express thin-proxy backend, drag-drop upload to Azure Blob via SAS URLs.",
+  "description": "Public sample demonstrating the Lumen Dev Files APIs from an organization's perspective. Vite + React + Tailwind frontend, Express thin-proxy backend, drag-drop upload to Amazon S3 via presigned URLs.",
   "license": "MIT",
   "workspaces": [
     "server",
